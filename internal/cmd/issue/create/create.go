@@ -2,9 +2,12 @@ package create
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/adrg/frontmatter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -77,6 +80,11 @@ func create(cmd *cobra.Command, _ []string) {
 	installation := viper.GetString("installation")
 
 	params := parseFlags(cmd.Flags())
+	if params.Frontmatter != "" || cmdutil.StdinHasData() {
+		cmdutil.Warn("Using frontmatter overwrites others flags")
+		params = parseFrontmatterFile(params.Frontmatter)
+	}
+
 	client := api.DefaultClient(params.Debug)
 	cc := createCmd{
 		client: client,
@@ -330,6 +338,31 @@ func (cc *createCmd) isMandatoryParamsMissing() bool {
 	return cc.params.Summary == "" || cc.params.IssueType == ""
 }
 
+func parseFrontmatterFile(fileName string) *cmdcommon.CreateParams {
+	params := &cmdcommon.CreateParams{}
+	data, err := cmdutil.ReadFile(fileName)
+	if err != nil {
+		cmdutil.ExitIfError(err)
+	}
+	markdown, err := frontmatter.MustParse(strings.NewReader(string(data)), params)
+
+	if err != nil {
+		err = errors.New("could not parse frontmatter input")
+		cmdutil.ExitIfError(err)
+	}
+	
+	params.Body = string(markdown)
+	overwriteParamsForFrontmatter(params)
+	return params
+}
+
+func overwriteParamsForFrontmatter(params *cmdcommon.CreateParams) {
+	params.NoInput = true
+	params.Frontmatter = ""
+	params.Template = ""
+}
+
+
 func parseFlags(flags query.FlagParser) *cmdcommon.CreateParams {
 	issueType, err := flags.GetString("type")
 	cmdutil.ExitIfError(err)
@@ -379,6 +412,9 @@ func parseFlags(flags query.FlagParser) *cmdcommon.CreateParams {
 	debug, err := flags.GetBool("debug")
 	cmdutil.ExitIfError(err)
 
+	frontmatter, err := flags.GetString("frontmatter")
+	cmdutil.ExitIfError(err)
+
 	return &cmdcommon.CreateParams{
 		IssueType:        issueType,
 		ParentIssueKey:   parentIssueKey,
@@ -396,5 +432,6 @@ func parseFlags(flags query.FlagParser) *cmdcommon.CreateParams {
 		Template:         template,
 		NoInput:          noInput,
 		Debug:            debug,
+		Frontmatter:      frontmatter,
 	}
 }

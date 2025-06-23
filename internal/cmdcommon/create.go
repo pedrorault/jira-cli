@@ -23,23 +23,24 @@ const (
 
 // CreateParams holds parameters for create command.
 type CreateParams struct {
-	Name             string
-	IssueType        string
-	ParentIssueKey   string
-	Summary          string
-	Body             string
-	Priority         string
-	Reporter         string
-	Assignee         string
-	Labels           []string
-	Components       []string
-	FixVersions      []string
-	AffectsVersions  []string
-	OriginalEstimate string
-	CustomFields     map[string]string
-	Template         string
-	NoInput          bool
-	Debug            bool
+	Name             string            `yaml:"name"`
+	IssueType        string            `yaml:"type"`
+	ParentIssueKey   string            `yaml:"parent`
+	Summary          string            `yaml:"summary"`
+	Body             string            `yaml:"body"`
+	Priority         string            `yaml:"priority"`
+	Reporter         string            `yaml:"reporter"`
+	Assignee         string            `yaml:"assignee"`
+	Labels           []string          `yaml:"labels"`
+	Components       []string          `yaml:"components"`
+	FixVersions      []string          `yaml:"fix-versions"`
+	AffectsVersions  []string          `yaml:"affects-versions"`
+	OriginalEstimate string            `yaml:"original-estimate"`
+	CustomFields     map[string]string `yaml:"custom-fields"`
+	Template         string            `yaml:"template"`
+	NoInput          bool              `yaml:"no-input"`
+	Debug            bool              `yaml:"debug"`
+	Frontmatter      string            `yaml:"frontmatter"`
 }
 
 // SetCreateFlags sets flags supported by create command.
@@ -69,6 +70,7 @@ And, this field is mandatory when creating a sub-task.`)
 	cmd.Flags().StringP("template", "T", "", "Path to a file to read body/description from")
 	cmd.Flags().Bool("web", false, "Open in web browser after successful creation")
 	cmd.Flags().Bool("no-input", false, "Disable prompt for non-required fields")
+	cmd.Flags().String("frontmatter", "", "Path to a file to read fields and description from")
 }
 
 // GetNextAction provide user an option to select next action.
