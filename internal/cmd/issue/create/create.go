@@ -51,6 +51,7 @@ $ echo "Description from stdin" | jira issue create -s"Summary" -tTask
 $ jira issue create -tTask -sSummary -b"Body from flag" --template /path/to/template.tpl`
 
 	flagRaw = "raw"
+	flagWeb = "web"
 )
 
 // NewCmdCreate is a create command.
@@ -73,24 +74,17 @@ func SetFlags(cmd *cobra.Command) {
 	cmdcommon.SetCreateFlags(cmd, "Issue")
 }
 
-func create(cmd *cobra.Command, _ []string) {
+func CreateIssue(params *cmdcommon.CreateParams, jsonFlag bool, web bool) {
 	server := viper.GetString("server")
 	project := viper.GetString("project.key")
 	projectType := viper.GetString("project.type")
 	installation := viper.GetString("installation")
-
-	params := parseFlags(cmd.Flags())
-	if params.Frontmatter != "" || cmdutil.StdinHasData() {
-		cmdutil.Warn("Using frontmatter overwrites others flags")
-		params = parseFrontmatterFile(params.Frontmatter)
-	}
 
 	client := api.DefaultClient(params.Debug)
 	cc := createCmd{
 		client: client,
 		params: params,
 	}
-
 	if cc.isNonInteractive() || cc.params.NoInput || tui.IsDumbTerminal() {
 		cc.params.NoInput = true
 
@@ -148,9 +142,6 @@ func create(cmd *cobra.Command, _ []string) {
 	}()
 
 	cmdutil.ExitIfError(err)
-
-	jsonFlag, err := cmd.Flags().GetBool(flagRaw)
-	cmdutil.ExitIfError(err)
 	if jsonFlag {
 		jsonData, err := json.Marshal(issue)
 		cmdutil.ExitIfError(err)
@@ -160,10 +151,22 @@ func create(cmd *cobra.Command, _ []string) {
 
 	cmdutil.Success("Issue created\n%s", cmdutil.GenerateServerBrowseURL(server, issue.Key))
 
-	if web, _ := cmd.Flags().GetBool("web"); web {
+	if web {
 		err := cmdutil.Navigate(server, issue.Key)
 		cmdutil.ExitIfError(err)
 	}
+}
+
+func create(cmd *cobra.Command, _ []string) {	
+	params := parseFlags(cmd.Flags())
+
+	jsonFlag, err := cmd.Flags().GetBool(flagRaw)
+	cmdutil.ExitIfError(err)
+
+	web, err := cmd.Flags().GetBool(flagWeb)
+	cmdutil.ExitIfError(err)
+
+	CreateIssue(params, jsonFlag, web)	
 }
 
 type createCmd struct {

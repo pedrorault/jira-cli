@@ -27,7 +27,6 @@ type CreateParams struct {
 	IssueType        string            `yaml:"type"`
 	ParentIssueKey   string            `yaml:"parent`
 	Summary          string            `yaml:"summary"`
-	Body             string            `yaml:"body"`
 	Priority         string            `yaml:"priority"`
 	Reporter         string            `yaml:"reporter"`
 	Assignee         string            `yaml:"assignee"`
@@ -37,10 +36,11 @@ type CreateParams struct {
 	AffectsVersions  []string          `yaml:"affects-versions"`
 	OriginalEstimate string            `yaml:"original-estimate"`
 	CustomFields     map[string]string `yaml:"custom-fields"`
-	Template         string            `yaml:"template"`
-	NoInput          bool              `yaml:"no-input"`
 	Debug            bool              `yaml:"debug"`
-	Frontmatter      string            `yaml:"frontmatter"`
+	Body             string
+	Template         string
+	NoInput          bool
+	Frontmatter      string
 }
 
 // SetCreateFlags sets flags supported by create command.
