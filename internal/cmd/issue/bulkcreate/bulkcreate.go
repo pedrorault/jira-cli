@@ -20,10 +20,10 @@ const (
 	examples = `$ jira issue bulk-create
 
 # Create issue in the configured project
-$ jira issue bulk-create --pattern ./issues"
+$ jira issue bulk-create --pattern "./issues/*.md"
 
 # Create issue in another project
-$ jira issue bulk-create -pPRJ --pattern ./issue'
+$ jira issue bulk-create -pPRJ --pattern "./issues/*.md"
 
 # Create issue in the configured project with JSON output
 $ jira issue bulk-create --raw
