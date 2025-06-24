@@ -166,6 +166,11 @@ func create(cmd *cobra.Command, _ []string) {
 	web, err := cmd.Flags().GetBool(flagWeb)
 	cmdutil.ExitIfError(err)
 
+	if params.Frontmatter != "" || cmdutil.StdinHasData() {
+		cmdutil.Warn("Using frontmatter overwrites others flags")
+		params = parseFrontmatterFile(params.Frontmatter)
+	}
+
 	CreateIssue(params, jsonFlag, web)	
 }
 
