@@ -20,10 +20,6 @@ original-estimate: "4h"
 custom-fields:
   environment: "staging"
 debug: false
-# template: ""    <-- Ignored
-# no-input: false <-- Ignored, default to true
-# body: ""        <-- Ignored, default to the markdown content
-# frontmatter: "" <-- Ignored
 ---
 # Awesome Title
 ## Awesome subtitle

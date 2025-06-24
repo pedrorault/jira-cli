@@ -2,9 +2,11 @@ package bulkcreate
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/adrg/frontmatter"
 	"github.com/ankitpokhrel/jira-cli/internal/cmd/issue/create"
 	"github.com/ankitpokhrel/jira-cli/internal/cmdcommon"
@@ -15,13 +17,13 @@ import (
 
 const (
 	helpText = `Create issues in bulk in a given project using files as input.`
-	examples = `$ jira issue create-bulk
+	examples = `$ jira issue bulk-create
 
 # Create issue in the configured project
-$ jira issue bulk-create --dir ./issues"
+$ jira issue bulk-create --pattern ./issues"
 
 # Create issue in another project
-$ jira issue bulk-create -pPRJ --dir ./issue'
+$ jira issue bulk-create -pPRJ --pattern ./issue'
 
 # Create issue in the configured project with JSON output
 $ jira issue bulk-create --raw
@@ -51,6 +53,10 @@ func NewCmdBulkCreate() *cobra.Command {
 
 func bulkcreate(cmd *cobra.Command, _ []string) {
 	params := parseFlags(cmd.Flags())
+	if params.Pattern == "" {
+		params.Pattern = askForPattern()
+	}
+
 	jsonFlag, err := cmd.Flags().GetBool(flagRaw)
 	cmdutil.ExitIfError(err)
 
@@ -93,7 +99,7 @@ func listFilesFromGlob(pattern string) ([]string, error) {
 	}
 
 	if len(files) == 0 {
-		return nil, errors.New("no files matched")
+		return nil, fmt.Errorf("no files matched \"%s\"", pattern)
 	}
 	return files, nil
 }
@@ -125,4 +131,22 @@ func parseFlags(flags query.FlagParser) *BulkCreateParams {
 	return &BulkCreateParams{
 		Pattern: pattern,
 	}
+}
+
+func askForPattern() string {
+	var qs []*survey.Question
+	qs = append(qs, &survey.Question{
+		Name: "Pattern",
+		Prompt: &survey.Input{
+			Message: "Pattern",
+			Help:    "Provide the pattern of directory and files to be read. (e.g.: ./issues/*.md)",
+			Default: "./issues/*.md"},
+		Validate: survey.Required,
+	})
+	ans := struct{ Pattern string }{}
+	err := survey.Ask(qs, &ans)
+	if err != nil {
+		cmdutil.ExitIfError(err)
+	}
+	return ans.Pattern
 }
