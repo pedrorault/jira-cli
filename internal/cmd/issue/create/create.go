@@ -2,9 +2,12 @@ package create
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/adrg/frontmatter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -48,6 +51,7 @@ $ echo "Description from stdin" | jira issue create -s"Summary" -tTask
 $ jira issue create -tTask -sSummary -b"Body from flag" --template /path/to/template.tpl`
 
 	flagRaw = "raw"
+	flagWeb = "web"
 )
 
 // NewCmdCreate is a create command.
@@ -70,19 +74,17 @@ func SetFlags(cmd *cobra.Command) {
 	cmdcommon.SetCreateFlags(cmd, "Issue")
 }
 
-func create(cmd *cobra.Command, _ []string) {
+func CreateIssue(params *cmdcommon.CreateParams, jsonFlag bool, web bool) {
 	server := viper.GetString("server")
 	project := viper.GetString("project.key")
 	projectType := viper.GetString("project.type")
 	installation := viper.GetString("installation")
 
-	params := parseFlags(cmd.Flags())
 	client := api.DefaultClient(params.Debug)
 	cc := createCmd{
 		client: client,
 		params: params,
 	}
-
 	if cc.isNonInteractive() || cc.params.NoInput || tui.IsDumbTerminal() {
 		cc.params.NoInput = true
 
@@ -140,9 +142,6 @@ func create(cmd *cobra.Command, _ []string) {
 	}()
 
 	cmdutil.ExitIfError(err)
-
-	jsonFlag, err := cmd.Flags().GetBool(flagRaw)
-	cmdutil.ExitIfError(err)
 	if jsonFlag {
 		jsonData, err := json.Marshal(issue)
 		cmdutil.ExitIfError(err)
@@ -152,10 +151,27 @@ func create(cmd *cobra.Command, _ []string) {
 
 	cmdutil.Success("Issue created\n%s", cmdutil.GenerateServerBrowseURL(server, issue.Key))
 
-	if web, _ := cmd.Flags().GetBool("web"); web {
+	if web {
 		err := cmdutil.Navigate(server, issue.Key)
 		cmdutil.ExitIfError(err)
 	}
+}
+
+func create(cmd *cobra.Command, _ []string) {	
+	params := parseFlags(cmd.Flags())
+
+	jsonFlag, err := cmd.Flags().GetBool(flagRaw)
+	cmdutil.ExitIfError(err)
+
+	web, err := cmd.Flags().GetBool(flagWeb)
+	cmdutil.ExitIfError(err)
+
+	if params.Frontmatter != "" || cmdutil.StdinHasData() {
+		cmdutil.Warn("Using frontmatter overwrites others flags")
+		params = parseFrontmatterFile(params.Frontmatter)
+	}
+
+	CreateIssue(params, jsonFlag, web)	
 }
 
 type createCmd struct {
@@ -330,6 +346,31 @@ func (cc *createCmd) isMandatoryParamsMissing() bool {
 	return cc.params.Summary == "" || cc.params.IssueType == ""
 }
 
+func parseFrontmatterFile(fileName string) *cmdcommon.CreateParams {
+	params := &cmdcommon.CreateParams{}
+	data, err := cmdutil.ReadFile(fileName)
+	if err != nil {
+		cmdutil.ExitIfError(err)
+	}
+	markdown, err := frontmatter.MustParse(strings.NewReader(string(data)), params)
+
+	if err != nil {
+		err = errors.New("could not parse frontmatter input")
+		cmdutil.ExitIfError(err)
+	}
+	
+	params.Body = string(markdown)
+	overwriteParamsForFrontmatter(params)
+	return params
+}
+
+func overwriteParamsForFrontmatter(params *cmdcommon.CreateParams) {
+	params.NoInput = true
+	params.Frontmatter = ""
+	params.Template = ""
+}
+
+
 func parseFlags(flags query.FlagParser) *cmdcommon.CreateParams {
 	issueType, err := flags.GetString("type")
 	cmdutil.ExitIfError(err)
@@ -379,6 +420,9 @@ func parseFlags(flags query.FlagParser) *cmdcommon.CreateParams {
 	debug, err := flags.GetBool("debug")
 	cmdutil.ExitIfError(err)
 
+	frontmatter, err := flags.GetString("frontmatter")
+	cmdutil.ExitIfError(err)
+
 	return &cmdcommon.CreateParams{
 		IssueType:        issueType,
 		ParentIssueKey:   parentIssueKey,
@@ -396,5 +440,6 @@ func parseFlags(flags query.FlagParser) *cmdcommon.CreateParams {
 		Template:         template,
 		NoInput:          noInput,
 		Debug:            debug,
+		Frontmatter:      frontmatter,
 	}
 }
